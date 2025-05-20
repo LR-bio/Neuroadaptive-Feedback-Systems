@@ -1,0 +1,110 @@
+import sys
+import random
+import json
+from PyQt6.QtWidgets import (
+    QApplication, QWidget, QVBoxLayout, QLabel, QPushButton, QTabWidget, QTextEdit, QHBoxLayout
+)
+from PyQt6.QtCore import QTimer
+from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
+from matplotlib.figure import Figure
+
+class EEGPlotCanvas(FigureCanvas):
+    def __init__(self, parent=None):
+        fig = Figure(figsize=(5, 3), dpi=100)
+        self.ax = fig.add_subplot(111)
+        super().__init__(fig)
+        self.setParent(parent)
+        self.values = []
+        self.max_len = 100
+
+    def update_plot(self, new_value):
+        if len(self.values) >= self.max_len:
+            self.values.pop(0)
+        self.values.append(new_value)
+        self.ax.clear()
+        self.ax.plot(self.values, label="EEG Signal")
+        self.ax.set_title("Real-Time EEG Signal")
+        self.ax.set_ylabel("Amplitude")
+        self.ax.set_xlabel("Time")
+        self.ax.legend()
+        self.draw()
+
+class NeuroadaptiveApp(QWidget):
+    def __init__(self):
+        super().__init__()
+        self.setWindowTitle("Neuroadaptive Feedback System")
+        self.setGeometry(100, 100, 800, 600)
+
+        self.tabs = QTabWidget()
+        self.dashboard_tab = QWidget()
+        self.controls_tab = QWidget()
+        self.logs_tab = QWidget()
+
+        self.tabs.addTab(self.dashboard_tab, "Dashboard")
+        self.tabs.addTab(self.controls_tab, "Controls")
+        self.tabs.addTab(self.logs_tab, "Logs")
+
+        self.init_dashboard()
+        self.init_controls()
+        self.init_logs()
+
+        main_layout = QVBoxLayout()
+        main_layout.addWidget(self.tabs)
+        self.setLayout(main_layout)
+
+        self.timer = QTimer()
+        self.timer.timeout.connect(self.update_data)
+        self.timer.start(100)
+
+    def init_dashboard(self):
+        layout = QVBoxLayout()
+        self.eeg_canvas = EEGPlotCanvas(self)
+        self.state_label = QLabel("Current State: Loading...")
+
+        layout.addWidget(self.eeg_canvas)
+        layout.addWidget(self.state_label)
+        self.dashboard_tab.setLayout(layout)
+
+    def init_controls(self):
+        layout = QVBoxLayout()
+        self.pause_button = QPushButton("Pause Simulation")
+        self.pause_button.clicked.connect(self.toggle_simulation)
+        layout.addWidget(self.pause_button)
+        self.controls_tab.setLayout(layout)
+
+    def init_logs(self):
+        layout = QVBoxLayout()
+        self.log_output = QTextEdit()
+        self.log_output.setReadOnly(True)
+        layout.addWidget(self.log_output)
+        self.logs_tab.setLayout(layout)
+
+    def toggle_simulation(self):
+        if self.timer.isActive():
+            self.timer.stop()
+            self.pause_button.setText("Resume Simulation")
+        else:
+            self.timer.start(100)
+            self.pause_button.setText("Pause Simulation")
+
+    def update_data(self):
+        # Simulated EEG data (replace this with real input if available)
+        value = random.uniform(-50, 50)
+        self.eeg_canvas.update_plot(value)
+
+        # Simulated state classification logic
+        if abs(value) < 15:
+            state = "Focused"
+        elif abs(value) < 30:
+            state = "Fatigued"
+        else:
+            state = "Stressed"
+
+        self.state_label.setText(f"Current State: {state}")
+        self.log_output.append(f"{state} - Value: {value:.2f}")
+
+if __name__ == "__main__":
+    app = QApplication(sys.argv)
+    window = NeuroadaptiveApp()
+    window.show()
+    sys.exit(app.exec())
